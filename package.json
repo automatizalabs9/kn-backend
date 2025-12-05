@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "build": "echo 'Build completed - Vercel will auto-detect TypeScript files in api/'"
+    "build": ""
   },
   "dependencies": {
     "@vercel/node": "^3.0.0",
