@@ -1,26 +1,31 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getPool, buildQueryContext } from '../../../_lib/db';
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getPool, buildQueryContext } from "../../../_lib/db";
 
 function setCorsHeaders(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const pool = getPool();
-  const { whereSql, params, tableName, dateColumn } = buildQueryContext(req.query);
+  const { whereSql, params, tableName, dateColumn } = buildQueryContext(
+    req.query
+  );
 
   const query = `
     SELECT 
@@ -35,12 +40,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const result = await pool.query(query, params);
+    console.log(`✅ Timeline: ${result.rows.length} pontos`);
     res.status(200).json(result.rows);
-  } catch (error) {
-    console.error('Erro timeline:', error);
-    res.status(500).json({ error: 'Erro ao buscar timeline' });
+  } catch (error: any) {
+    console.error("❌ Erro timeline:", error);
+    // Sempre retornar array vazio
+    res.status(200).json([]);
   } finally {
-    await pool.end();
+    try {
+      await pool.end();
+    } catch (e) {
+      // Ignorar erro ao fechar pool
+    }
   }
 }
-
