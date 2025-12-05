@@ -12,41 +12,42 @@ function setCorsHeaders(res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCorsHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   let pool;
+  
   try {
-    pool = getPool();
-  } catch (error: any) {
-    console.error("❌ Erro ao criar pool:", error?.message);
-    return res.status(200).json({
-      totalLeads: 0,
-      totalAgendados: 0,
-      totalPendentes: 0,
-      taxaConversao: 0,
-    });
-  }
+    setCorsHeaders(res);
 
-  const { whereSql, params, tableName } = buildQueryContext(req.query);
+    if (req.method === "OPTIONS") {
+      return res.status(200).end();
+    }
 
-  const query = `
-    SELECT 
-      COUNT(*) as "totalLeads",
-      SUM(CASE WHEN agendou = 'Sim' THEN 1 ELSE 0 END) as "totalAgendados",
-      SUM(CASE WHEN agendou = 'Pendente' THEN 1 ELSE 0 END) as "totalPendentes"
-    FROM ${tableName}
-    ${whereSql}
-  `;
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
 
-  try {
+    try {
+      pool = getPool();
+    } catch (error: any) {
+      console.error("❌ Erro ao criar pool:", error?.message);
+      return res.status(200).json({
+        totalLeads: 0,
+        totalAgendados: 0,
+        totalPendentes: 0,
+        taxaConversao: 0,
+      });
+    }
+
+    const { whereSql, params, tableName } = buildQueryContext(req.query);
+
+    const query = `
+      SELECT 
+        COUNT(*) as "totalLeads",
+        SUM(CASE WHEN agendou = 'Sim' THEN 1 ELSE 0 END) as "totalAgendados",
+        SUM(CASE WHEN agendou = 'Pendente' THEN 1 ELSE 0 END) as "totalPendentes"
+      FROM ${tableName}
+      ${whereSql}
+    `;
+
     const result = await pool.query(query, params);
     const row = result.rows[0];
     const totalLeads = Number(row.totalLeads) || 0;
@@ -64,20 +65,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ Métricas calculadas:`, metrics);
     res.status(200).json(metrics);
   } catch (error: any) {
-    console.error("❌ Erro metrics:", error);
+    console.error("❌ Erro inesperado em metrics:", error);
     console.error(`   Mensagem:`, error?.message);
-    // Retornar métricas zeradas em caso de erro
-    res.status(200).json({
-      totalLeads: 0,
-      totalAgendados: 0,
-      totalPendentes: 0,
-      taxaConversao: 0,
-    });
+    console.error(`   Stack:`, error?.stack);
+    
+    // Garantir que sempre retornamos uma resposta válida
+    if (!res.headersSent) {
+      res.status(200).json({
+        totalLeads: 0,
+        totalAgendados: 0,
+        totalPendentes: 0,
+        taxaConversao: 0,
+      });
+    }
   } finally {
-    try {
-      await pool.end();
-    } catch (e) {
-      // Ignorar erro ao fechar pool
+    if (pool) {
+      try {
+        await pool.end();
+      } catch (e) {
+        // Ignorar erro ao fechar pool
+      }
     }
   }
 }
