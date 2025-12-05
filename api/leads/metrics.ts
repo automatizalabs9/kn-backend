@@ -22,7 +22,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const pool = getPool();
+  let pool;
+  try {
+    pool = getPool();
+  } catch (error: any) {
+    console.error("❌ Erro ao criar pool:", error?.message);
+    return res.status(200).json({
+      totalLeads: 0,
+      totalAgendados: 0,
+      totalPendentes: 0,
+      taxaConversao: 0,
+    });
+  }
+
   const { whereSql, params, tableName } = buildQueryContext(req.query);
 
   const query = `
@@ -48,7 +60,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       totalPendentes: Number(row.totalPendentes) || 0,
       taxaConversao,
     };
-    
+
     console.log(`✅ Métricas calculadas:`, metrics);
     res.status(200).json(metrics);
   } catch (error: any) {
