@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getPool, buildQueryContext } from "../../_lib/db";
+import { getPool, buildQueryContext } from "../_lib/db";
 
 function setCorsHeaders(res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -13,7 +13,7 @@ function setCorsHeaders(res: VercelResponse) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   let pool;
-  
+
   try {
     setCorsHeaders(res);
 
@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error("❌ Erro inesperado em metrics:", error);
     console.error(`   Mensagem:`, error?.message);
     console.error(`   Stack:`, error?.stack);
-    
+
     // Garantir que sempre retornamos uma resposta válida
     if (!res.headersSent) {
       res.status(200).json({
