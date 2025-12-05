@@ -1,22 +1,25 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getPool, buildQueryContext } from '../../_lib/db';
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { getPool, buildQueryContext } from "../../_lib/db";
 
 function setCorsHeaders(res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS"
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   setCorsHeaders(res);
 
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
   const pool = getPool();
@@ -34,21 +37,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const result = await pool.query(query, params);
     const row = result.rows[0];
-    const totalLeads = Number(row.totalLeads);
-    const totalAgendados = Number(row.totalAgendados);
-    const taxaConversao = totalLeads > 0 ? (totalAgendados / totalLeads) * 100 : 0;
+    const totalLeads = Number(row.totalLeads) || 0;
+    const totalAgendados = Number(row.totalAgendados) || 0;
+    const taxaConversao =
+      totalLeads > 0 ? (totalAgendados / totalLeads) * 100 : 0;
 
-    res.status(200).json({
+    const metrics = {
       totalLeads,
       totalAgendados,
-      totalPendentes: Number(row.totalPendentes),
+      totalPendentes: Number(row.totalPendentes) || 0,
       taxaConversao,
+    };
+    
+    console.log(`✅ Métricas calculadas:`, metrics);
+    res.status(200).json(metrics);
+  } catch (error: any) {
+    console.error("❌ Erro metrics:", error);
+    console.error(`   Mensagem:`, error?.message);
+    // Retornar métricas zeradas em caso de erro
+    res.status(200).json({
+      totalLeads: 0,
+      totalAgendados: 0,
+      totalPendentes: 0,
+      taxaConversao: 0,
     });
-  } catch (error) {
-    console.error('Erro metrics:', error);
-    res.status(500).json({ error: 'Erro ao buscar métricas' });
   } finally {
-    await pool.end();
+    try {
+      await pool.end();
+    } catch (e) {
+      // Ignorar erro ao fechar pool
+    }
   }
 }
-
