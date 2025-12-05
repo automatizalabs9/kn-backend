@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getPool, buildQueryContext } from "../_lib/db";
+import { getPool, buildQueryContext } from "./_lib/db";
 
 function setCorsHeaders(res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -13,7 +13,7 @@ function setCorsHeaders(res: VercelResponse) {
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   let pool;
-  
+
   try {
     setCorsHeaders(res);
 
