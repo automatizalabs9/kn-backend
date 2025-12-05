@@ -22,7 +22,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const pool = getPool();
+  let pool;
+  try {
+    pool = getPool();
+  } catch (error: any) {
+    console.error("❌ Erro ao criar pool:", error?.message);
+    return res.status(200).json([]);
+  }
+
   const { whereSql, params, tableName } = buildQueryContext(req.query);
 
   const whereWithReason = whereSql
