@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getPool, buildQueryContext } from "../../../_lib/db";
+import { getPool, buildQueryContext } from "../../_lib/db";
 
 function setCorsHeaders(res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -12,37 +12,38 @@ function setCorsHeaders(res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCorsHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   let pool;
-  try {
-    pool = getPool();
-  } catch (error: any) {
-    console.error("❌ Erro ao criar pool:", error?.message);
-    return res.status(200).json([]);
-  }
-
-  const { whereSql, params, tableName } = buildQueryContext(req.query);
-
-  const query = `
-    SELECT 
-      como_nos_conheceu as name,
-      COUNT(*) as total,
-      SUM(CASE WHEN agendou = 'Sim' THEN 1 ELSE 0 END) as agendados
-    FROM ${tableName}
-    ${whereSql}
-    GROUP BY como_nos_conheceu
-  `;
 
   try {
+    setCorsHeaders(res);
+
+    if (req.method === "OPTIONS") {
+      return res.status(200).end();
+    }
+
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
+
+    try {
+      pool = getPool();
+    } catch (error: any) {
+      console.error("❌ Erro ao criar pool:", error?.message);
+      return res.status(200).json([]);
+    }
+
+    const { whereSql, params, tableName } = buildQueryContext(req.query);
+
+    const query = `
+      SELECT 
+        como_nos_conheceu as name,
+        COUNT(*) as total,
+        SUM(CASE WHEN agendou = 'Sim' THEN 1 ELSE 0 END) as agendados
+      FROM ${tableName}
+      ${whereSql}
+      GROUP BY como_nos_conheceu
+    `;
+
     const result = await pool.query(query, params);
     const data = result.rows
       .map((row: any) => ({
@@ -60,13 +61,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json(data);
   } catch (error: any) {
     console.error("❌ Erro conversao:", error);
+    console.error(`   Mensagem:`, error?.message);
+    console.error(`   Stack:`, error?.stack);
     // Sempre retornar array vazio
-    res.status(200).json([]);
+    if (!res.headersSent) {
+      res.status(200).json([]);
+    }
   } finally {
-    try {
-      await pool.end();
-    } catch (e) {
-      // Ignorar erro ao fechar pool
+    if (pool) {
+      try {
+        await pool.end();
+      } catch (e) {
+        // Ignorar erro ao fechar pool
+      }
     }
   }
 }
