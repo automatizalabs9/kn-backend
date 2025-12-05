@@ -22,7 +22,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const pool = getPool();
+  let pool;
+  try {
+    pool = getPool();
+  } catch (error: any) {
+    console.error("❌ Erro ao criar pool:", error?.message);
+    // Se não conseguir criar pool (variáveis não configuradas), retornar array vazio
+    return res.status(200).json([]);
+  }
+
   const { whereSql, params, tableName, dateColumn } = buildQueryContext(
     req.query
   );
@@ -51,7 +59,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.error(`❌ Erro ao buscar ${tableName}:`, error);
     console.error(`   Mensagem:`, error?.message);
     console.error(`   Código:`, error?.code);
-    
+
     // Sempre retornar array vazio em caso de erro, não objeto de erro
     // Isso evita o erro "e.reduce is not a function" no frontend
     res.status(200).json([]);
