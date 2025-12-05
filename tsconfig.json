@@ -8,7 +8,8 @@
     "skipLibCheck": true,
     "strict": false,
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": ["node"],
+    "typeRoots": ["./node_modules/@types"]
   },
   "include": ["api/**/*", "_lib/**/*"],
   "exclude": ["node_modules"]
