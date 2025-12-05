@@ -1,9 +1,8 @@
 {
-  "buildCommand": null,
-  "outputDirectory": null,
   "functions": {
     "api/**/*.ts": {
-      "runtime": "@vercel/node@3.0.0"
+      "runtime": "@vercel/node@3.0.0",
+      "memory": 1024
     }
   },
   "rewrites": [
