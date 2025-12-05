@@ -12,42 +12,43 @@ function setCorsHeaders(res: VercelResponse) {
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  setCorsHeaders(res);
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
-
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   let pool;
+  
   try {
-    pool = getPool();
-  } catch (error: any) {
-    console.error("❌ Erro ao criar pool:", error?.message);
-    // Se não conseguir criar pool (variáveis não configuradas), retornar array vazio
-    return res.status(200).json([]);
-  }
+    setCorsHeaders(res);
 
-  const { whereSql, params, tableName, dateColumn } = buildQueryContext(
-    req.query
-  );
+    if (req.method === "OPTIONS") {
+      return res.status(200).end();
+    }
 
-  const orderBy =
-    tableName === "leads_contatos"
-      ? `ORDER BY ${dateColumn} DESC, sequencia_dia ASC`
-      : `ORDER BY ${dateColumn} DESC`;
+    if (req.method !== "GET") {
+      return res.status(405).json({ error: "Method not allowed" });
+    }
 
-  const query = `
-    SELECT * FROM ${tableName}
-    ${whereSql} 
-    ${orderBy}
-    LIMIT 100
-  `;
+    try {
+      pool = getPool();
+    } catch (error: any) {
+      console.error("❌ Erro ao criar pool:", error?.message);
+      // Se não conseguir criar pool (variáveis não configuradas), retornar array vazio
+      return res.status(200).json([]);
+    }
 
-  try {
+    const { whereSql, params, tableName, dateColumn } = buildQueryContext(
+      req.query
+    );
+
+    const orderBy =
+      tableName === "leads_contatos"
+        ? `ORDER BY ${dateColumn} DESC, sequencia_dia ASC`
+        : `ORDER BY ${dateColumn} DESC`;
+
+    const query = `
+      SELECT * FROM ${tableName}
+      ${whereSql} 
+      ${orderBy}
+      LIMIT 100
+    `;
+
     const result = await pool.query(query, params);
     const normalizedRows = result.rows.map((row) => ({
       ...row,
@@ -56,18 +57,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`✅ Retornando ${normalizedRows.length} leads de ${tableName}`);
     res.status(200).json(normalizedRows);
   } catch (error: any) {
-    console.error(`❌ Erro ao buscar ${tableName}:`, error);
+    console.error(`❌ Erro ao buscar leads:`, error);
     console.error(`   Mensagem:`, error?.message);
     console.error(`   Código:`, error?.code);
+    console.error(`   Stack:`, error?.stack);
 
     // Sempre retornar array vazio em caso de erro, não objeto de erro
     // Isso evita o erro "e.reduce is not a function" no frontend
-    res.status(200).json([]);
+    if (!res.headersSent) {
+      res.status(200).json([]);
+    }
   } finally {
-    try {
-      await pool.end();
-    } catch (e) {
-      // Ignorar erro ao fechar pool
+    if (pool) {
+      try {
+        await pool.end();
+      } catch (e) {
+        // Ignorar erro ao fechar pool
+      }
     }
   }
 }
