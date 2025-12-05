@@ -1,8 +1,8 @@
 {
+  "version": 2,
   "functions": {
     "api/**/*.ts": {
-      "runtime": "@vercel/node@3.0.0",
-      "memory": 1024
+      "runtime": "nodejs24.x"
     }
   },
   "rewrites": [
